@@ -29,3 +29,26 @@ export type SquareHighlight = {
   square: SquareNotation
   isHighlighted: boolean
 }
+
+/**
+ * Chess piece types
+ */
+export type PieceType = 'king' | 'queen' | 'rook' | 'bishop' | 'knight' | 'pawn'
+
+/**
+ * Chess piece colors
+ */
+export type PieceColor = 'white' | 'black'
+
+/**
+ * Chess piece representation
+ */
+export type Piece = {
+  type: PieceType
+  color: PieceColor
+}
+
+/**
+ * Board state: maps square notation to piece (or null if empty)
+ */
+export type BoardState = Map<SquareNotation, Piece | null>
