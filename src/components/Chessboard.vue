@@ -14,7 +14,6 @@
           v-for="square in squares"
           :key="`${square.row}-${square.col}`"
           :position="square"
-          :is-highlighted="isSquareHighlighted(square.row, square.col)"
           :piece="getPieceForSquare(square)"
           :show-coordinates="false"
           @click="handleClick"
@@ -40,35 +39,28 @@ import { useChessboard } from '@/composables/useChessboard'
 import { useChessStore } from '@/stores/chessStore'
 import type { Piece, SquarePosition } from '@/types/chess'
 import { getAllSquares } from '@/utils/boardHelpers'
-import { positionToNotation } from '@/utils/chessNotation'
 
 import Square from './Square.vue'
 
 const props = defineProps<{
-  size?: number // Optional explicit size (for responsive calculations)
+  size?: number
 }>()
 
 const store = useChessStore()
 const {
   handleSquareClick,
-  isSquareHighlighted: checkHighlighted,
   handleDragStart: handleDragStartLogic,
   handleDrop: handleDropLogic,
   getPieceAt,
 } = useChessboard()
 
-// Initialize board on mount
 onMounted(() => {
   store.initializeBoard()
 })
 
 const squares = getAllSquares()
 
-// Reactive function to get piece for a square
-// Accessing store.boardState creates a reactive dependency
 function getPieceForSquare(square: SquarePosition): Piece | null {
-  // Access boardState to create reactive dependency
-  store.boardState.value
   return getPieceAt(square)
 }
 
@@ -87,11 +79,6 @@ const boardStyle = computed(() => {
   }
   return {}
 })
-
-function isSquareHighlighted(row: number, col: number): boolean {
-  const notation = positionToNotation(row, col)
-  return checkHighlighted(notation)
-}
 
 function handleClick(square: SquarePosition) {
   handleSquareClick(square)

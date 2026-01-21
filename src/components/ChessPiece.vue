@@ -1,7 +1,11 @@
 <template>
   <div
-    :class="['chess-piece', `piece-${piece.color}`, { 'piece-dragging': isDragging }]"
-    :draggable="true"
+    :class="[
+      'chess-piece',
+      `piece-${piece.color}`,
+      { 'piece-dragging': isDragging, 'piece-not-turn': !isMyTurn },
+    ]"
+    :draggable="canDrag"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
   >
@@ -25,8 +29,11 @@ import whiteKnight from '@/assets/pieces/whiteKnight.svg?url'
 import whitePawn from '@/assets/pieces/whitePawn.svg?url'
 import whiteQueen from '@/assets/pieces/whiteQueen.svg?url'
 import whiteRook from '@/assets/pieces/whiteRook.svg?url'
+import { useChessStore } from '@/stores/chessStore'
 import type { Piece } from '@/types/chess'
 import { getPieceName } from '@/utils/pieceHelpers'
+
+const store = useChessStore()
 
 const props = defineProps<{
   piece: Piece
@@ -61,10 +68,23 @@ const pieceImageSrc = computed(() => {
   return pieceImages[key] || ''
 })
 
+const isMyTurn = computed(() => {
+  return props.piece.color === store.currentTurn
+})
+
+const canDrag = computed(() => {
+  return isMyTurn.value
+})
+
 function handleDragStart(event: DragEvent) {
+  if (!isMyTurn.value) {
+    event.preventDefault()
+    return
+  }
+
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', '') // Required for Firefox
+    event.dataTransfer.setData('text/plain', '')
   }
   emit('dragstart', event)
 }
@@ -88,6 +108,14 @@ function handleDragEnd(event: DragEvent) {
 
 .chess-piece:active {
   cursor: grabbing;
+}
+
+.piece-not-turn {
+  cursor: not-allowed;
+}
+
+.piece-not-turn:active {
+  cursor: not-allowed;
 }
 
 .piece-dragging {

@@ -8,6 +8,13 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+}
+
 body {
   font-family:
     system-ui,
@@ -26,5 +33,6 @@ body {
 
 #app {
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }

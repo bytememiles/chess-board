@@ -18,28 +18,38 @@ import Sidebar from '@/components/Sidebar.vue'
 
 <style scoped>
 .app {
-  min-height: 100vh;
-  padding: 16px;
+  height: 100vh;
+  padding: 16px 0 16px 16px;
   background-color: #f3f4f6;
+  overflow: hidden;
 }
 
 .app-container {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   display: flex;
   gap: 24px;
-  align-items: flex-start;
+  align-items: center;
+  height: calc(100vh - 32px);
+  padding-right: 0;
+  overflow: hidden;
 }
 
 .board-section {
-  flex: 0 0 65%;
+  flex: 1;
   display: flex;
   justify-content: center;
+  align-items: center;
+  min-width: 0;
 }
 
 .sidebar-section {
-  flex: 0 0 35%;
-  min-width: 0;
+  flex: 0 0 320px;
+  min-width: 280px;
+  max-width: 400px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 767px) {
@@ -50,6 +60,8 @@ import Sidebar from '@/components/Sidebar.vue'
   .app-container {
     flex-direction: column;
     gap: 16px;
+    height: auto;
+    min-height: calc(100vh - 32px);
   }
 
   .board-section {
@@ -59,18 +71,24 @@ import Sidebar from '@/components/Sidebar.vue'
 
   .sidebar-section {
     flex: 1;
-    width: 100%;
+    width: calc(100vw - 32px);
     min-height: 300px;
+    max-width: none;
   }
 }
 
 @media (min-width: 768px) {
   .app {
-    padding: 24px;
+    padding: 24px 0 24px 24px;
+    height: 100vh;
+  }
+
+  .app-container {
+    height: calc(100vh - 48px);
   }
 
   .sidebar-section {
-    max-height: calc(100vh - 48px);
+    height: calc(100vh - 48px);
   }
 }
 </style>

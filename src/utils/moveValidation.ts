@@ -14,26 +14,21 @@ export function getSquaresBetween(from: SquarePosition, to: SquarePosition): Squ
 
   // Must be horizontal, vertical, or diagonal
   if (rowDiff === 0 && colDiff === 0) {
-    return squares // Same square
+    return squares
   }
 
-  // Check if it's a straight line
   const isHorizontal = rowDiff === 0 && colDiff !== 0
   const isVertical = colDiff === 0 && rowDiff !== 0
   const isDiagonal = Math.abs(rowDiff) === Math.abs(colDiff) && rowDiff !== 0
 
   if (!isHorizontal && !isVertical && !isDiagonal) {
-    return squares // Not a straight line (e.g., knight move)
+    return squares
   }
 
-  // Calculate step direction
   const rowStep = rowDiff === 0 ? 0 : rowDiff > 0 ? 1 : -1
   const colStep = colDiff === 0 ? 0 : colDiff > 0 ? 1 : -1
-
-  // Calculate number of steps
   const steps = Math.max(Math.abs(rowDiff), Math.abs(colDiff))
 
-  // Get all intermediate squares
   for (let i = 1; i < steps; i++) {
     squares.push({
       row: from.row + rowStep * i,
@@ -61,7 +56,7 @@ export function isPathClear(
   for (const square of squaresBetween) {
     const notation = positionToNotation(square.row, square.col)
     if (boardState.get(notation) !== null) {
-      return false // Path is blocked
+      return false
     }
   }
 
@@ -76,9 +71,9 @@ export function isPathClear(
  */
 export function canCapture(piece: Piece, targetPiece: Piece | null): boolean {
   if (targetPiece === null) {
-    return true // Can move to empty square
+    return true
   }
-  return piece.color !== targetPiece.color // Can capture opponent pieces
+  return piece.color !== targetPiece.color
 }
 
 /**
@@ -91,7 +86,6 @@ export function isValidKnightMove(from: SquarePosition, to: SquarePosition): boo
   const rowDiff = Math.abs(to.row - from.row)
   const colDiff = Math.abs(to.col - from.col)
 
-  // Knight moves in L-shape: 2+1 or 1+2
   return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2)
 }
 
@@ -110,7 +104,6 @@ export function isValidRookMove(
   const rowDiff = to.row - from.row
   const colDiff = to.col - from.col
 
-  // Rook moves horizontally or vertically
   const isHorizontal = rowDiff === 0 && colDiff !== 0
   const isVertical = colDiff === 0 && rowDiff !== 0
 
@@ -118,7 +111,6 @@ export function isValidRookMove(
     return false
   }
 
-  // Check path is clear
   return isPathClear(from, to, boardState)
 }
 
@@ -137,14 +129,12 @@ export function isValidBishopMove(
   const rowDiff = to.row - from.row
   const colDiff = to.col - from.col
 
-  // Bishop moves diagonally
   const isDiagonal = Math.abs(rowDiff) === Math.abs(colDiff) && rowDiff !== 0
 
   if (!isDiagonal) {
     return false
   }
 
-  // Check path is clear
   return isPathClear(from, to, boardState)
 }
 
@@ -160,7 +150,6 @@ export function isValidQueenMove(
   to: SquarePosition,
   boardState: BoardState
 ): boolean {
-  // Queen can move like rook or bishop
   return isValidRookMove(from, to, boardState) || isValidBishopMove(from, to, boardState)
 }
 
@@ -184,29 +173,23 @@ export function isValidPawnMove(
   const targetNotation = positionToNotation(to.row, to.col)
   const targetPiece = boardState.get(targetNotation) ?? null
 
-  // White pawns move "up" (decreasing row), black pawns move "down" (increasing row)
   const direction = piece.color === 'white' ? -1 : 1
   const expectedRowDiff = direction * (to.row - from.row)
 
-  // Check if moving forward
   if (expectedRowDiff <= 0) {
-    return false // Can't move backward or sideways without capturing
+    return false
   }
 
-  // Check starting rank for first move
-  const startingRank = piece.color === 'white' ? 6 : 1 // Row 6 = rank 2, Row 1 = rank 7
+  const startingRank = piece.color === 'white' ? 6 : 1
   const isOnStartingRank = from.row === startingRank
   const hasMoved =
     moveHistory && moveHistory.some(move => move.from === positionToNotation(from.row, from.col))
 
-  // Forward movement (no capture)
   if (colDiff === 0) {
-    // Can move 1 square forward
     if (expectedRowDiff === 1) {
-      return targetPiece === null // Must be empty
+      return targetPiece === null
     }
 
-    // Can move 2 squares forward on first move
     if (expectedRowDiff === 2 && isOnStartingRank && !hasMoved) {
       return targetPiece === null && isPathClear(from, to, boardState)
     }
@@ -214,11 +197,8 @@ export function isValidPawnMove(
     return false
   }
 
-  // Diagonal capture (must capture opponent piece)
   if (colDiff === 1 && expectedRowDiff === 1) {
-    return (
-      targetPiece !== null && targetPiece !== undefined && targetPiece.color !== piece.color // Must capture opponent
-    )
+    return targetPiece !== null && targetPiece !== undefined && targetPiece.color !== piece.color
   }
 
   return false
@@ -243,32 +223,27 @@ export function isValidKingMove(
   const rowDiff = Math.abs(to.row - from.row)
   const colDiff = Math.abs(to.col - from.col)
 
-  // Normal king move: one square in any direction
   if (rowDiff <= 1 && colDiff <= 1 && (rowDiff > 0 || colDiff > 0)) {
     return true
   }
 
-  // Castling: king moves 2 squares horizontally toward rook
   if (
     rowDiff === 0 &&
     colDiff === 2 &&
     moveHistory &&
     !moveHistory.some(move => move.from === positionToNotation(from.row, from.col))
   ) {
-    // Determine which side (kingside or queenside)
     const isKingside = to.col > from.col
     const rookCol = isKingside ? 7 : 0
     const rookSquare = positionToNotation(from.row, rookCol)
     const rook = boardState.get(rookSquare)
 
-    // Check if rook exists and hasn't moved
     if (
       rook &&
       rook.type === 'rook' &&
       rook.color === piece.color &&
       !moveHistory.some(move => move.from === rookSquare)
     ) {
-      // Check if path is clear
       const squaresBetween = getSquaresBetween(from, to)
       for (const square of squaresBetween) {
         const notation = positionToNotation(square.row, square.col)
@@ -299,7 +274,6 @@ export function isValidMove(
   boardState: BoardState,
   moveHistory?: MoveHistory
 ): boolean {
-  // Same square is valid (no-op)
   if (from === to) {
     return true
   }
@@ -308,12 +282,10 @@ export function isValidMove(
   const toPos = notationToPosition(to)
   const targetPiece = boardState.get(to)
 
-  // Can't capture own pieces
   if (targetPiece && targetPiece.color === piece.color) {
     return false
   }
 
-  // Route to piece-specific validator
   switch (piece.type) {
     case 'pawn':
       return isValidPawnMove(piece, fromPos, toPos, boardState, moveHistory)
@@ -348,7 +320,6 @@ export function getValidMoves(
 ): SquareNotation[] {
   const validSquares: SquareNotation[] = []
 
-  // Check all 64 squares
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
       const to = positionToNotation(row, col)
