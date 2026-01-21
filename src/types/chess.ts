@@ -52,3 +52,18 @@ export type Piece = {
  * Board state: maps square notation to piece (or null if empty)
  */
 export type BoardState = Map<SquareNotation, Piece | null>
+
+/**
+ * A chess move
+ */
+export type Move = {
+  piece: Piece
+  from: SquareNotation
+  to: SquareNotation
+  timestamp: number
+}
+
+/**
+ * Move history: array of all moves made in the game
+ */
+export type MoveHistory = Move[]

@@ -1,7 +1,15 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import type { BoardState, ClickEvent, Piece, SquareNotation, SquarePosition } from '@/types/chess'
+import type {
+  BoardState,
+  ClickEvent,
+  Move,
+  MoveHistory,
+  Piece,
+  SquareNotation,
+  SquarePosition,
+} from '@/types/chess'
 import { positionToNotation } from '@/utils/chessNotation'
 import { getInitialBoardState } from '@/utils/pieceHelpers'
 
@@ -12,6 +20,8 @@ export const useChessStore = defineStore('chess', () => {
   const boardState = ref<BoardState>(new Map())
   const draggingPiece = ref<{ piece: Piece; from: SquareNotation } | null>(null)
   const currentDragOverSquare = ref<SquareNotation | null>(null)
+  const moveHistory = ref<MoveHistory>([])
+  const validMoves = ref<Set<SquareNotation>>(new Set())
   let clickSequenceCounter = 0
 
   // Getters
@@ -59,6 +69,8 @@ export const useChessStore = defineStore('chess', () => {
     clickSequenceCounter = 0
     boardState.value = getInitialBoardState()
     draggingPiece.value = null
+    moveHistory.value = []
+    validMoves.value.clear()
   }
 
   // Board state management
@@ -85,6 +97,25 @@ export const useChessStore = defineStore('chess', () => {
 
   function initializeBoard(): void {
     boardState.value = getInitialBoardState()
+    moveHistory.value = []
+    validMoves.value.clear()
+  }
+
+  // Move history management
+  function addMove(move: Move): void {
+    moveHistory.value.push(move)
+  }
+
+  function hasPieceMoved(square: SquareNotation): boolean {
+    return moveHistory.value.some(move => move.from === square)
+  }
+
+  function setValidMoves(squares: SquareNotation[]): void {
+    validMoves.value = new Set(squares)
+  }
+
+  function clearValidMoves(): void {
+    validMoves.value.clear()
   }
 
   return {
@@ -94,6 +125,8 @@ export const useChessStore = defineStore('chess', () => {
     boardState,
     draggingPiece,
     currentDragOverSquare,
+    moveHistory,
+    validMoves,
 
     // Getters
     totalClicks,
@@ -111,5 +144,11 @@ export const useChessStore = defineStore('chess', () => {
     setPiece,
     movePiece,
     initializeBoard,
+
+    // Move history actions
+    addMove,
+    hasPieceMoved,
+    setValidMoves,
+    clearValidMoves,
   }
 })

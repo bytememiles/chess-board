@@ -2,7 +2,8 @@ import { computed } from 'vue'
 
 import { useChessStore } from '@/stores/chessStore'
 import type { Piece, SquareNotation, SquarePosition } from '@/types/chess'
-import { positionToNotation } from '@/utils/chessNotation'
+import { notationToPosition, positionToNotation } from '@/utils/chessNotation'
+import { getValidMoves, isValidMove } from '@/utils/moveValidation'
 
 /**
  * Composable for chessboard interaction logic
@@ -41,13 +42,16 @@ export function useChessboard() {
   }))
 
   /**
-   * Handle drag start - store the piece being dragged
+   * Handle drag start - store the piece being dragged and calculate valid moves
    */
   function handleDragStart(position: SquarePosition) {
     const square = positionToNotation(position.row, position.col)
     const piece = store.getPiece(square)
     if (piece) {
       store.draggingPiece = { piece, from: square }
+      // Calculate and store all valid moves for this piece
+      const validMoves = getValidMoves(piece, square, store.boardState, store.moveHistory)
+      store.setValidMoves(validMoves)
     }
   }
 
@@ -62,32 +66,67 @@ export function useChessboard() {
   }
 
   /**
-   * Handle drop - move piece from source to target square
+   * Handle drop - validate and move piece from source to target square
    */
   function handleDrop(position: SquarePosition) {
     const to = positionToNotation(position.row, position.col)
     const dragging = store.draggingPiece
 
     if (dragging) {
-      const { from } = dragging
+      const { piece, from } = dragging
 
-      // Don't move if dropping on the same square
-      if (from !== to) {
-        // Check if target square is occupied
-        const targetPiece = store.getPiece(to)
-        if (targetPiece !== null) {
-          // Invalid drop - target square is occupied
-          // Don't move the piece, just clear dragging state
-          store.draggingPiece = null
-          return
+      // Validate the move
+      const isValid = isValidMove(piece, from, to, store.boardState, store.moveHistory)
+
+      if (isValid && from !== to) {
+        // Execute the move
+        store.movePiece(from, to)
+
+        // Handle castling: if king moves 2 squares horizontally, move the rook
+        if (piece.type === 'king') {
+          const fromPos = notationToPosition(from)
+          const toPos = notationToPosition(to)
+          const rowDiff = Math.abs(toPos.row - fromPos.row)
+          const colDiff = Math.abs(toPos.col - fromPos.col)
+
+          // Castling: king moves 2 squares horizontally
+          if (rowDiff === 0 && colDiff === 2) {
+            const isKingside = toPos.col > fromPos.col
+            const rookCol = isKingside ? 7 : 0
+            const rookFrom = positionToNotation(fromPos.row, rookCol)
+            const rookTo = positionToNotation(
+              fromPos.row,
+              isKingside ? 5 : 3 // Rook moves to f1/f8 (kingside) or d1/d8 (queenside)
+            )
+
+            // Move the rook
+            store.movePiece(rookFrom, rookTo)
+
+            // Record rook move in history
+            const rook = store.getPiece(rookTo)
+            if (rook) {
+              store.addMove({
+                piece: rook,
+                from: rookFrom,
+                to: rookTo,
+                timestamp: Date.now(),
+              })
+            }
+          }
         }
 
-        // Move the piece immediately (target is empty)
-        store.movePiece(from, to)
+        // Record move in history
+        store.addMove({
+          piece,
+          from,
+          to,
+          timestamp: Date.now(),
+        })
       }
 
-      // Clear dragging state
+      // Clear dragging state and valid moves
       store.draggingPiece = null
+      store.clearValidMoves()
     }
   }
 
@@ -96,6 +135,7 @@ export function useChessboard() {
    */
   function handleDragEnd() {
     store.draggingPiece = null
+    store.clearValidMoves()
   }
 
   /**

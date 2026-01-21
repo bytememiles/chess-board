@@ -5,8 +5,11 @@
       isLight ? 'square-light' : 'square-dark',
       {
         'square-highlighted': isHighlighted,
-        'square-drag-over': isDragOver && isValidDrop,
-        'square-drag-over-invalid': isDragOver && !isValidDrop,
+        'square-drag-over-info':
+          isDragOverCurrent && !isValidTarget && !isInvalidTarget && !isCaptureTarget,
+        'square-drag-over-valid': isDragOverCurrent && isValidTarget,
+        'square-drag-over-invalid': isDragOverCurrent && isInvalidTarget,
+        'square-drag-over-capture': isDragOverCurrent && isCaptureTarget,
       },
     ]"
     @click="handleClick"
@@ -65,30 +68,30 @@ const notation = computed(() => positionToNotation(props.position.row, props.pos
 const isLight = computed(() => isLightSquare(props.position.row, props.position.col))
 
 // Computed to check if this square is the current drag over target
-const isDragOver = computed(() => {
+const isDragOverCurrent = computed(() => {
   return store.currentDragOverSquare === notation.value
 })
 
-// Computed to check if this is a valid drop target (no piece or dropping on source square)
-const isValidDrop = computed(() => {
-  // If not being dragged over, it's valid (no validation needed)
-  if (!isDragOver.value) return true
+// Computed to check if current target square is valid (empty and in valid moves)
+const isValidTarget = computed(() => {
+  if (!isDragOverCurrent.value || !store.draggingPiece) return false
+  if (props.piece) return false // Must be empty for green overlay
+  return store.validMoves.has(notation.value)
+})
 
-  // If there's a piece being dragged
-  if (store.draggingPiece) {
-    const { from } = store.draggingPiece
+// Computed to check if current target square is invalid (same color piece)
+const isInvalidTarget = computed(() => {
+  if (!isDragOverCurrent.value || !store.draggingPiece) return false
+  if (!props.piece) return false // Must have a piece
+  return props.piece.color === store.draggingPiece.piece.color
+})
 
-    // Valid if dropping on the same square (no-op) or if target square is empty
-    if (from === notation.value) {
-      return true // Same square is valid (no-op)
-    }
-
-    // Check if target square has a piece
-    const targetPiece = store.getPiece(notation.value)
-    return targetPiece === null // Valid only if empty
-  }
-
-  return true
+// Computed to check if current target square is a capture (opponent piece)
+const isCaptureTarget = computed(() => {
+  if (!isDragOverCurrent.value || !store.draggingPiece) return false
+  if (!props.piece) return false // Must have a piece
+  if (props.piece.color === store.draggingPiece.piece.color) return false // Not same color
+  return store.validMoves.has(notation.value) // Must be in valid moves
 })
 
 function handleClick() {
@@ -106,30 +109,8 @@ function handleMouseLeave() {
 function handleDragOver(event: DragEvent) {
   // Only show overlay if there's actually a piece being dragged
   if (event.dataTransfer && event.dataTransfer.effectAllowed === 'move') {
-    // Check if this is a valid drop target
-    const targetPiece = store.getPiece(notation.value)
-    const dragging = store.draggingPiece
-
-    // Prevent drop if target has a piece (unless it's the source square)
-    if (targetPiece !== null && dragging && dragging.from !== notation.value) {
-      event.preventDefault()
-      event.stopPropagation()
-      event.dataTransfer.dropEffect = 'none' // Show "not allowed" cursor
-
-      // Clear any pending drag leave timeout
-      if (dragLeaveTimeout) {
-        clearTimeout(dragLeaveTimeout)
-        dragLeaveTimeout = null
-      }
-
-      // Set this square as the current drag over target (for red overlay)
-      store.currentDragOverSquare = notation.value
-      return
-    }
-
     event.preventDefault()
     event.stopPropagation()
-    event.dataTransfer.dropEffect = 'move'
 
     // Clear any pending drag leave timeout
     if (dragLeaveTimeout) {
@@ -137,35 +118,25 @@ function handleDragOver(event: DragEvent) {
       dragLeaveTimeout = null
     }
 
-    // Set this square as the current drag over target
+    // Set this square as the current drag over target (for blue overlay)
     store.currentDragOverSquare = notation.value
+
+    // Set appropriate cursor based on whether move is valid
+    const dragging = store.draggingPiece
+    if (dragging) {
+      const isValid = store.validMoves.has(notation.value)
+      if (isValid) {
+        event.dataTransfer.dropEffect = 'move'
+      } else {
+        event.dataTransfer.dropEffect = 'none'
+      }
+    }
   }
 }
 
 function handleDragEnter(event: DragEvent) {
   // Only show overlay if there's actually a piece being dragged
   if (event.dataTransfer && event.dataTransfer.effectAllowed === 'move') {
-    // Check if this is a valid drop target
-    const targetPiece = store.getPiece(notation.value)
-    const dragging = store.draggingPiece
-
-    // Prevent drop if target has a piece (unless it's the source square)
-    if (targetPiece !== null && dragging && dragging.from !== notation.value) {
-      event.preventDefault()
-      event.stopPropagation()
-      event.dataTransfer.dropEffect = 'none' // Show "not allowed" cursor
-
-      // Clear any pending drag leave timeout
-      if (dragLeaveTimeout) {
-        clearTimeout(dragLeaveTimeout)
-        dragLeaveTimeout = null
-      }
-
-      // Set this square as the current drag over target (for red overlay)
-      store.currentDragOverSquare = notation.value
-      return
-    }
-
     event.preventDefault()
     event.stopPropagation()
 
@@ -175,8 +146,19 @@ function handleDragEnter(event: DragEvent) {
       dragLeaveTimeout = null
     }
 
-    // Set this square as the current drag over target
+    // Set this square as the current drag over target (for blue overlay)
     store.currentDragOverSquare = notation.value
+
+    // Set appropriate cursor based on whether move is valid
+    const dragging = store.draggingPiece
+    if (dragging) {
+      const isValid = store.validMoves.has(notation.value)
+      if (isValid) {
+        event.dataTransfer.dropEffect = 'move'
+      } else {
+        event.dataTransfer.dropEffect = 'none'
+      }
+    }
   }
 }
 
@@ -238,26 +220,6 @@ onUnmounted(() => {
 })
 
 function handleDrop(event: DragEvent) {
-  // Check if this is a valid drop target
-  const targetPiece = store.getPiece(notation.value)
-  const dragging = store.draggingPiece
-
-  // Prevent drop if target has a piece (unless it's the source square)
-  if (targetPiece !== null && dragging && dragging.from !== notation.value) {
-    event.preventDefault()
-    event.stopPropagation()
-
-    // Clear any pending timeout
-    if (dragLeaveTimeout) {
-      clearTimeout(dragLeaveTimeout)
-      dragLeaveTimeout = null
-    }
-
-    store.currentDragOverSquare = null
-    isDraggingFromHere.value = false
-    return // Don't emit drop event for invalid drops
-  }
-
   event.preventDefault()
   event.stopPropagation()
 
@@ -269,6 +231,8 @@ function handleDrop(event: DragEvent) {
 
   store.currentDragOverSquare = null
   isDraggingFromHere.value = false
+
+  // Emit drop event - validation will happen in useChessboard
   emit('drop', props.position)
 }
 
@@ -329,15 +293,29 @@ function handlePieceDragEnd() {
   background-color: rgba(59, 130, 246, 0.4) !important;
 }
 
-.square-drag-over {
+/* Blue overlay - current square under cursor */
+.square-drag-over-info {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  box-shadow: inset 0 0 0 2px #3b82f6;
+}
+
+/* Green overlay - valid empty square */
+.square-drag-over-valid {
   background-color: rgba(34, 197, 94, 0.3) !important;
   box-shadow: inset 0 0 0 2px #22c55e;
 }
 
+/* Red overlay - same color piece (invalid) */
 .square-drag-over-invalid {
   background-color: rgba(239, 68, 68, 0.3) !important;
   box-shadow: inset 0 0 0 2px #ef4444;
   cursor: not-allowed;
+}
+
+/* Orange overlay - opponent piece that can be captured */
+.square-drag-over-capture {
+  background-color: rgba(249, 115, 22, 0.3) !important;
+  box-shadow: inset 0 0 0 2px #f97316;
 }
 
 .square-coordinate {
