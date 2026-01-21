@@ -5,7 +5,8 @@
       isLight ? 'square-light' : 'square-dark',
       {
         'square-highlighted': isHighlighted,
-        'square-drag-over': isDragOver,
+        'square-drag-over': isDragOver && isValidDrop,
+        'square-drag-over-invalid': isDragOver && !isValidDrop,
       },
     ]"
     @click="handleClick"
@@ -68,6 +69,28 @@ const isDragOver = computed(() => {
   return store.currentDragOverSquare === notation.value
 })
 
+// Computed to check if this is a valid drop target (no piece or dropping on source square)
+const isValidDrop = computed(() => {
+  // If not being dragged over, it's valid (no validation needed)
+  if (!isDragOver.value) return true
+
+  // If there's a piece being dragged
+  if (store.draggingPiece) {
+    const { from } = store.draggingPiece
+
+    // Valid if dropping on the same square (no-op) or if target square is empty
+    if (from === notation.value) {
+      return true // Same square is valid (no-op)
+    }
+
+    // Check if target square has a piece
+    const targetPiece = store.getPiece(notation.value)
+    return targetPiece === null // Valid only if empty
+  }
+
+  return true
+})
+
 function handleClick() {
   emit('click', props.position)
 }
@@ -83,6 +106,27 @@ function handleMouseLeave() {
 function handleDragOver(event: DragEvent) {
   // Only show overlay if there's actually a piece being dragged
   if (event.dataTransfer && event.dataTransfer.effectAllowed === 'move') {
+    // Check if this is a valid drop target
+    const targetPiece = store.getPiece(notation.value)
+    const dragging = store.draggingPiece
+
+    // Prevent drop if target has a piece (unless it's the source square)
+    if (targetPiece !== null && dragging && dragging.from !== notation.value) {
+      event.preventDefault()
+      event.stopPropagation()
+      event.dataTransfer.dropEffect = 'none' // Show "not allowed" cursor
+
+      // Clear any pending drag leave timeout
+      if (dragLeaveTimeout) {
+        clearTimeout(dragLeaveTimeout)
+        dragLeaveTimeout = null
+      }
+
+      // Set this square as the current drag over target (for red overlay)
+      store.currentDragOverSquare = notation.value
+      return
+    }
+
     event.preventDefault()
     event.stopPropagation()
     event.dataTransfer.dropEffect = 'move'
@@ -101,6 +145,27 @@ function handleDragOver(event: DragEvent) {
 function handleDragEnter(event: DragEvent) {
   // Only show overlay if there's actually a piece being dragged
   if (event.dataTransfer && event.dataTransfer.effectAllowed === 'move') {
+    // Check if this is a valid drop target
+    const targetPiece = store.getPiece(notation.value)
+    const dragging = store.draggingPiece
+
+    // Prevent drop if target has a piece (unless it's the source square)
+    if (targetPiece !== null && dragging && dragging.from !== notation.value) {
+      event.preventDefault()
+      event.stopPropagation()
+      event.dataTransfer.dropEffect = 'none' // Show "not allowed" cursor
+
+      // Clear any pending drag leave timeout
+      if (dragLeaveTimeout) {
+        clearTimeout(dragLeaveTimeout)
+        dragLeaveTimeout = null
+      }
+
+      // Set this square as the current drag over target (for red overlay)
+      store.currentDragOverSquare = notation.value
+      return
+    }
+
     event.preventDefault()
     event.stopPropagation()
 
@@ -173,6 +238,26 @@ onUnmounted(() => {
 })
 
 function handleDrop(event: DragEvent) {
+  // Check if this is a valid drop target
+  const targetPiece = store.getPiece(notation.value)
+  const dragging = store.draggingPiece
+
+  // Prevent drop if target has a piece (unless it's the source square)
+  if (targetPiece !== null && dragging && dragging.from !== notation.value) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    // Clear any pending timeout
+    if (dragLeaveTimeout) {
+      clearTimeout(dragLeaveTimeout)
+      dragLeaveTimeout = null
+    }
+
+    store.currentDragOverSquare = null
+    isDraggingFromHere.value = false
+    return // Don't emit drop event for invalid drops
+  }
+
   event.preventDefault()
   event.stopPropagation()
 
@@ -247,6 +332,12 @@ function handlePieceDragEnd() {
 .square-drag-over {
   background-color: rgba(34, 197, 94, 0.3) !important;
   box-shadow: inset 0 0 0 2px #22c55e;
+}
+
+.square-drag-over-invalid {
+  background-color: rgba(239, 68, 68, 0.3) !important;
+  box-shadow: inset 0 0 0 2px #ef4444;
+  cursor: not-allowed;
 }
 
 .square-coordinate {

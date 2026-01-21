@@ -73,7 +73,16 @@ export function useChessboard() {
 
       // Don't move if dropping on the same square
       if (from !== to) {
-        // Move the piece immediately
+        // Check if target square is occupied
+        const targetPiece = store.getPiece(to)
+        if (targetPiece !== null) {
+          // Invalid drop - target square is occupied
+          // Don't move the piece, just clear dragging state
+          store.draggingPiece = null
+          return
+        }
+
+        // Move the piece immediately (target is empty)
         store.movePiece(from, to)
       }
 
