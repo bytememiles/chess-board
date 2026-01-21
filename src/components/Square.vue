@@ -5,6 +5,8 @@
       isLight ? 'square-light' : 'square-dark',
       {
         'square-highlighted': isHighlighted,
+        'square-last-move-source': isLastMoveSource,
+        'square-last-move-target': isLastMoveTarget,
         'square-drag-over-info':
           isDragOverCurrent && !isValidTarget && !isInvalidTarget && !isCaptureTarget,
         'square-drag-over-valid': isDragOverCurrent && isValidTarget,
@@ -79,9 +81,22 @@ const isValidTarget = computed(() => {
   return store.validMoves.has(notation.value)
 })
 
+// Computed to check if this is the source square of the last move (light green)
+const isLastMoveSource = computed(() => {
+  return store.lastMoveSquares?.from === notation.value
+})
+
+// Computed to check if this is the target square of the last move (normal green)
+const isLastMoveTarget = computed(() => {
+  return store.lastMoveSquares?.to === notation.value
+})
+
 // Computed to check if current target square is invalid (same color piece)
+// Don't show red overlay on the source square
 const isInvalidTarget = computed(() => {
   if (!isDragOverCurrent.value || !store.draggingPiece) return false
+  // Don't show red on source square (where dragging started)
+  if (store.draggingPiece.from === notation.value) return false
   if (!props.piece) return false // Must have a piece
   return props.piece.color === store.draggingPiece.piece.color
 })
@@ -316,6 +331,17 @@ function handlePieceDragEnd() {
 .square-drag-over-capture {
   background-color: rgba(249, 115, 22, 0.3) !important;
   box-shadow: inset 0 0 0 2px #f97316;
+}
+
+/* Light green background for last move source square */
+.square-last-move-source {
+  background-color: rgba(175, 250, 204, 0.45) !important;
+}
+
+/* Normal green background for last move target square */
+.square-last-move-target {
+  background-color: rgba(34, 197, 94, 0.3) !important;
+  box-shadow: inset 0 0 0 2px #22c55e;
 }
 
 .square-coordinate {

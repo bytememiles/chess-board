@@ -22,6 +22,8 @@ export const useChessStore = defineStore('chess', () => {
   const currentDragOverSquare = ref<SquareNotation | null>(null)
   const moveHistory = ref<MoveHistory>([])
   const validMoves = ref<Set<SquareNotation>>(new Set())
+  const lastMove = ref<Move | null>(null)
+  const lastMoveSquares = ref<{ from: SquareNotation; to: SquareNotation } | null>(null)
   let clickSequenceCounter = 0
 
   // Getters
@@ -71,6 +73,8 @@ export const useChessStore = defineStore('chess', () => {
     draggingPiece.value = null
     moveHistory.value = []
     validMoves.value.clear()
+    lastMove.value = null
+    lastMoveSquares.value = null
   }
 
   // Board state management
@@ -99,11 +103,15 @@ export const useChessStore = defineStore('chess', () => {
     boardState.value = getInitialBoardState()
     moveHistory.value = []
     validMoves.value.clear()
+    lastMove.value = null
+    lastMoveSquares.value = null
   }
 
   // Move history management
   function addMove(move: Move): void {
     moveHistory.value.push(move)
+    lastMove.value = move
+    lastMoveSquares.value = { from: move.from, to: move.to }
   }
 
   function hasPieceMoved(square: SquareNotation): boolean {
@@ -127,6 +135,8 @@ export const useChessStore = defineStore('chess', () => {
     currentDragOverSquare,
     moveHistory,
     validMoves,
+    lastMove,
+    lastMoveSquares,
 
     // Getters
     totalClicks,
