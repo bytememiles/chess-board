@@ -309,7 +309,7 @@ function downloadPGN(): void {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'game.pgn'
+  a.download = 'game.log'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
